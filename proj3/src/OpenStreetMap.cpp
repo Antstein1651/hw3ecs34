@@ -1,4 +1,5 @@
 #include "OpenStreetMap.h"
+#include "XMLReader.h"
 #include <memory>
 #include <unordered_map>
 #include <vector>
