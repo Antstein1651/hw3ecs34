@@ -1,47 +1,51 @@
-\CC = gcc
 CXX = g++
-INC_DIR = ./include
-SRC_DIR = ./src
-OBJ_DIR = ./obj
-BIN_DIR = ./bin
-TEST_SRC_DIR = ./testsrc
-CXXFLAGS = -std=c++17 -I$(INC_DIR) -Wall
+CXXFLAGS = -std=c++17 -Wall -Iinclude
+LDFLAGS = -lgtest_main -lgtest -pthread -lexpat
 
-LDFLAGS = -lexpat -lgtest_main -lgtest -lpthread
 
-all: directories runtests
+SRC_DIR = src
+TEST_DIR = testsrc
+OBJ_DIR = obj
+BIN_DIR = bin
 
-runtests: $(BIN_DIR)/teststrutils $(BIN_DIR)/teststrdatasource $(BIN_DIR)/teststrdatasink $(BIN_DIR)/testdsv $(BIN_DIR)/testxml
-	@for test in $^; do $$test; done
 
-# Object files
-OBJECTS = $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringDataSink.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/DSVWriter.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/XMLWriter.o
+SRC_FILES = $(wildcard $(SRC_DIR)/*.cpp)
+TEST_FILES = $(wildcard $(TEST_DIR)/*.cpp)
 
-# Test executables - added proper indentation for commands
-$(BIN_DIR)/teststrutils: $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/StringUtilsTest.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_DIR)/teststrdatasource: $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringDataSourceTest.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
+OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/src_%.o,$(SRC_FILES))
+TEST_OBJ_FILES = $(patsubst $(TEST_DIR)/%.cpp,$(OBJ_DIR)/test_%.o,$(TEST_FILES))
 
-$(BIN_DIR)/teststrdatasink: $(OBJ_DIR)/StringDataSink.o $(OBJ_DIR)/StringDataSinkTest.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(BIN_DIR)/testdsv: $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/DSVWriter.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringDataSink.o $(OBJ_DIR)/DSVTest.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
+GTEST_TARGET = $(BIN_DIR)/runtests
 
-$(BIN_DIR)/testxml: $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/XMLWriter.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringDataSink.o $(OBJ_DIR)/XMLTest.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
 
-# Compile source and test object files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(INC_DIR)/%.h
-	$(CXX) -o $@ -c $< $(CXXFLAGS)
+all: $(GTEST_TARGET)
 
-$(OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cpp
-	$(CXX) -o $@ -c $< $(CXXFLAGS)
+
+$(GTEST_TARGET): $(OBJ_FILES) $(TEST_OBJ_FILES)
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+
+$(OBJ_DIR)/src_%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+
+$(OBJ_DIR)/test_%.o: $(TEST_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+
+$(OBJ_DIR):
+	@mkdir -p $(OBJ_DIR)
+
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-directories:
-	mkdir -p $(OBJ_DIR) $(BIN_DIR)
+
+test: all
+	./$(GTEST_TARGET)
+
+
+.PHONY: all clean test
