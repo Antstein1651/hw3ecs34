@@ -1,45 +1,31 @@
-# Compiler and Flags
+# Compiler
 CXX = g++
+
+# Compiler Flags
 CXXFLAGS = -std=c++17 -Wall -Wextra -g
-LDFLAGS = -lgtest -lgtest_main -pthread
 
-# Directories
-SRC_DIR = src
-INCLUDE_DIR = include
-TEST_DIR = testsrc
-BUILD_DIR = build
-BIN_DIR = bin
+# List of source files
+SRC = $(wildcard *.cpp)            # Automatically find all .cpp files
+OBJ = $(SRC:.cpp=.o)                # Convert .cpp filenames to .o filenames
 
-# Source Files
-SRC_FILES = $(wildcard $(SRC_DIR)/*.cpp)
-INCLUDE_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
-TEST_FILES = $(wildcard $(TEST_DIR)/*.cpp)
+# Name of the final executable
+TARGET = driver
 
-# Object Files
-OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRC_FILES))
-TEST_OBJ_FILES = $(patsubst $(TEST_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(TEST_FILES))
+# Default rule: Build the executable
+all: $(TARGET)
 
-# Executables
-TEST_EXEC = $(BIN_DIR)/run_tests
+# Link all object files into the final executable
+$(TARGET): $(OBJ)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ)
 
-# Create Directories if not exist
-$(shell mkdir -p $(BUILD_DIR) $(BIN_DIR))
+# Compile .cpp files into .o files
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile Object Files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(INCLUDE_FILES)
-	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+# Run the executable
+run: $(TARGET)
+	./$(TARGET)
 
-$(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp $(INCLUDE_FILES)
-	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
-
-# Link Executable for Tests
-$(TEST_EXEC): $(OBJ_FILES) $(TEST_OBJ_FILES)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-# Run Tests
-test: $(TEST_EXEC)
-	./$(TEST_EXEC)
-
-# Clean Build Files
+# Clean up build files
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -f $(OBJ) $(TARGET)
