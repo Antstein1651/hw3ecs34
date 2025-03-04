@@ -1,31 +1,69 @@
-# Compiler
-CXX = g++
+CXX=g++
 
-# Compiler Flags
-CXXFLAGS = -std=c++17 -Wall -Wextra -g
+CUR_DIR = $(shell pwd)
+INC_DIR = ./include
+SRC_DIR = ./src
+OBJ_DIR = ./obj
+BIN_DIR = ./bin
+TESTBIN_DIR = ./testbin
+LIB_DIR = ./lib
+LIBCSV_DIR = ./libcsv-3.0.3
 
-# List of source files
-SRC = $(wildcard *.cpp)            # Automatically find all .cpp files
-OBJ = $(SRC:.cpp=.o)                # Convert .cpp filenames to .o filenames
+INCLUDE         += -I $(INC_DIR)
+CFLAGS          +=  -Wall
+XMLFLAG			= -lexpat
+LDFLAGS         += 
+TESTLDFLAGS     += -lgtest_main -lgtest  -lpthread
+CPPFLAGS        += -std=c++14 
+PROJ_NAME       = proj5
+TESTROUTER_NAME = testrouter
+LIBCSV_NAME     = libcsv.a
+#MAIN_OBJ        = $(OBJ_DIR)/main.o
+MAIN_OBJ        = $(OBJ_DIR)/speedtest.o
 
-# Name of the final executable
-TARGET = driver
+TESTROUTER_OBJ = $(OBJ_DIR)/testrouter.o
 
-# Default rule: Build the executable
-all: $(TARGET)
+PROJ_OBJS     = $(OBJ_DIR)/CSVReader.o \
+		$(OBJ_DIR)/CSVWriter.o \
+		$(OBJ_DIR)/XMLReader.o \
+		$(OBJ_DIR)/XMLWriter.o \
+		$(OBJ_DIR)/MapRouter.o \
+        $(OBJ_DIR)/StringUtils.o
 
-# Link all object files into the final executable
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ)
+all: $(LIB_DIR)/$(LIBCSV_NAME)
+$(LIB_DIR)/$(LIBCSV_NAME): $(LIBCSV_DIR)/libcsv.la
+	cd $(LIBCSV_DIR); make install; cd ..
 
-# Compile .cpp files into .o files
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(LIBCSV_DIR)/MakeFile:
+	cd $(LIBCSV_DIR); ./configure --prefix=$(CUR_DIR); cd ..
 
-# Run the executable
-run: $(TARGET)
-	./$(TARGET)
+$(LIBCSV_DIR)/libcsv.la: $(LIBCSV_DIR)/MakeFile
+	cd $(LIBCSV_DIR); make;cd ..
 
-# Clean up build files
-clean:
-	rm -f $(OBJ) $(TARGET)
+#all: directories testrouter $(BIN_DIR)/$(PROJ_NAME)
+all: directories $(BIN_DIR)/$(PROJ_NAME)
+
+
+testrouter: $(TESTBIN_DIR)/$(TESTROUTER_NAME)
+	$(TESTBIN_DIR)/$(TESTROUTER_NAME)
+
+$(BIN_DIR)/$(PROJ_NAME): $(PROJ_OBJS) $(MAIN_OBJ)
+	$(CXX) $(MAIN_OBJ) $(PROJ_OBJS) $(LIB_DIR)/$(LIBCSV_NAME) $(XMLFLAG) -o $(BIN_DIR)/$(PROJ_NAME) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(LDFLAGS) 
+
+$(TESTBIN_DIR)/$(TESTROUTER_NAME): $(PROJ_OBJS) $(TESTROUTER_OBJ)
+	$(CXX) $(PROJ_OBJS) $(TESTROUTER_OBJ) $(LIB_DIR)/$(LIBCSV_NAME) $(XMLFLAG) -o $(TESTBIN_DIR)/$(TESTROUTER_NAME) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(TESTLDFLAGS)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
+	
+.PHONY: directories
+directories:
+	mkdir -p $(BIN_DIR)
+	mkdir -p $(OBJ_DIR)
+	mkdir -p $(TESTBIN_DIR)
+	
+clean::
+	-rm $(OBJ_DIR)/*.o $(INC_DIR)/*.*~ $(SRC_DIR)/*.*~
+	cd $(LIBCSV_DIR);make clean; cd..
+	
+.PHONY: clean
