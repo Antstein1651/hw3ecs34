@@ -1,35 +1,45 @@
+# Compiler and Flags
 CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -g
+LDFLAGS = -lgtest -lgtest_main -pthread
 
-# Compiler Flags
-CXXFLAGS = -std=c++17 -Wall -Wextra -g -Iinclude -pthread
+# Directories
+SRC_DIR = src
+INCLUDE_DIR = include
+TEST_DIR = testsrc
+BUILD_DIR = build
+BIN_DIR = bin
 
 # Source Files
-SRC = src/main.cpp src/OpenStreetMap.cpp src/XMLReader.cpp src/DataSource.cpp src/StreetMap.cpp
+SRC_FILES = $(wildcard $(SRC_DIR)/*.cpp)
+INCLUDE_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
+TEST_FILES = $(wildcard $(TEST_DIR)/*.cpp)
 
 # Object Files
-OBJ = $(SRC:.cpp=.o)
+OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRC_FILES))
+TEST_OBJ_FILES = $(patsubst $(TEST_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(TEST_FILES))
 
-# Target Executable
-TARGET = ./driver
+# Executables
+TEST_EXEC = $(BIN_DIR)/run_tests
 
-# Google Test
-GTEST_DIR = /usr/src/gtest
-GTEST_LIB = -lgtest -lgtest_main
+# Create Directories if not exist
+$(shell mkdir -p $(BUILD_DIR) $(BIN_DIR))
 
-# Build the main executable
-all: $(TARGET)
+# Compile Object Files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ) $(GTEST_LIB)
+$(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp $(INCLUDE_FILES)
+	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
-# Compile .cpp files into .o files
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+# Link Executable for Tests
+$(TEST_EXEC): $(OBJ_FILES) $(TEST_OBJ_FILES)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
-# Run the compiled program
-run: $(TARGET)
-	./$(TARGET)
+# Run Tests
+test: $(TEST_EXEC)
+	./$(TEST_EXEC)
 
-# Clean up generated files
+# Clean Build Files
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
