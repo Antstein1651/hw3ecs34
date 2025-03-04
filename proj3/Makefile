@@ -1,69 +1,47 @@
-CXX=g++
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Iinclude -I/ucrt64/include
 
-CUR_DIR = $(shell pwd)
-INC_DIR = ./include
-SRC_DIR = ./src
-OBJ_DIR = ./obj
-BIN_DIR = ./bin
-TESTBIN_DIR = ./testbin
-LIB_DIR = ./lib
-LIBCSV_DIR = ./libcsv-3.0.3
+LDFLAGS = -L/ucrt64/lib -lgtest -lgtest_main -lpthread -lexpat
 
-INCLUDE         += -I $(INC_DIR)
-CFLAGS          +=  -Wall
-XMLFLAG			= -lexpat
-LDFLAGS         += 
-TESTLDFLAGS     += -lgtest_main -lgtest  -lpthread
-CPPFLAGS        += -std=c++14 
-PROJ_NAME       = proj5
-TESTROUTER_NAME = testrouter
-LIBCSV_NAME     = libcsv.a
-#MAIN_OBJ        = $(OBJ_DIR)/main.o
-MAIN_OBJ        = $(OBJ_DIR)/speedtest.o
+SRC_DIR = src
+TEST_DIR = testsrc
+OBJ_DIR = obj
+BIN_DIR = bin
 
-TESTROUTER_OBJ = $(OBJ_DIR)/testrouter.o
+SRC = $(wildcard $(SRC_DIR)/*.cpp)
+TESTSRC = $(wildcard $(TEST_DIR)/*.cpp)
+OBJS = $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringDataSink.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/DSVWriter.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/XMLWriter.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/OpenStreetMap.o
+TESTOBJS = $(OBJ_DIR)/StringUtilsTest.o $(OBJ_DIR)/StringDataSourceTest.o $(OBJ_DIR)/StringDataSinkTest.o $(OBJ_DIR)/DSVTest.o $(OBJ_DIR)/XMLTest.o $(OBJ_DIR)/CSVBusSystemTest.o $(OBJ_DIR)/OpenStreetMapTest.o
 
-PROJ_OBJS     = $(OBJ_DIR)/CSVReader.o \
-		$(OBJ_DIR)/CSVWriter.o \
-		$(OBJ_DIR)/XMLReader.o \
-		$(OBJ_DIR)/XMLWriter.o \
-		$(OBJ_DIR)/MapRouter.o \
-        $(OBJ_DIR)/StringUtils.o
+TARGET = $(BIN_DIR)/tests
 
-all: $(LIB_DIR)/$(LIBCSV_NAME)
-$(LIB_DIR)/$(LIBCSV_NAME): $(LIBCSV_DIR)/libcsv.la
-	cd $(LIBCSV_DIR); make install; cd ..
+test: all
+	./$(TARGET)
 
-$(LIBCSV_DIR)/MakeFile:
-	cd $(LIBCSV_DIR); ./configure --prefix=$(CUR_DIR); cd ..
+all: $(TARGET)
 
-$(LIBCSV_DIR)/libcsv.la: $(LIBCSV_DIR)/MakeFile
-	cd $(LIBCSV_DIR); make;cd ..
-
-#all: directories testrouter $(BIN_DIR)/$(PROJ_NAME)
-all: directories $(BIN_DIR)/$(PROJ_NAME)
-
-
-testrouter: $(TESTBIN_DIR)/$(TESTROUTER_NAME)
-	$(TESTBIN_DIR)/$(TESTROUTER_NAME)
-
-$(BIN_DIR)/$(PROJ_NAME): $(PROJ_OBJS) $(MAIN_OBJ)
-	$(CXX) $(MAIN_OBJ) $(PROJ_OBJS) $(LIB_DIR)/$(LIBCSV_NAME) $(XMLFLAG) -o $(BIN_DIR)/$(PROJ_NAME) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(LDFLAGS) 
-
-$(TESTBIN_DIR)/$(TESTROUTER_NAME): $(PROJ_OBJS) $(TESTROUTER_OBJ)
-	$(CXX) $(PROJ_OBJS) $(TESTROUTER_OBJ) $(LIB_DIR)/$(LIBCSV_NAME) $(XMLFLAG) -o $(TESTBIN_DIR)/$(TESTROUTER_NAME) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(TESTLDFLAGS)
-
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $(DEFINES) $(INCLUDE) -c $< -o $@
-	
-.PHONY: directories
+# make directories
 directories:
-	mkdir -p $(BIN_DIR)
-	mkdir -p $(OBJ_DIR)
-	mkdir -p $(TESTBIN_DIR)
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(BIN_DIR)
+	@echo "directories made"
+
+# compile
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | directories
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
+	@echo "src compiled"
 	
-clean::
-	-rm $(OBJ_DIR)/*.o $(INC_DIR)/*.*~ $(SRC_DIR)/*.*~
-	cd $(LIBCSV_DIR);make clean; cd..
-	
-.PHONY: clean
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | directories
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
+	@echo "testsrc compiled"
+
+# link tests
+$(TARGET): $(OBJS) $(TESTOBJS) | directories
+	@$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+	@echo "linked tests"
+
+# clean build 
+clean:
+	@rm -rf $(OBJ_DIR) 
+	@rm -rf $(BIN_DIR)
+	@echo "cleaned"
