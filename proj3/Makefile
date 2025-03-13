@@ -1,45 +1,68 @@
-# Compiler and Flags
-CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -g
-LDFLAGS = -lgtest -lgtest_main -pthread
-
-# Directories
 SRC_DIR = src
+TEST_SRC_DIR = testsrc
 INCLUDE_DIR = include
-TEST_DIR = testsrc
-BUILD_DIR = build
+OBJ_DIR = obj
 BIN_DIR = bin
 
-# Source Files
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -g -I$(INCLUDE_DIR)
+LDFLAGS = -lgtest_main -lgtest -pthread -lexpat
+
 SRC_FILES = $(wildcard $(SRC_DIR)/*.cpp)
-INCLUDE_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
-TEST_FILES = $(wildcard $(TEST_DIR)/*.cpp)
+TEST_FILES = $(wildcard $(TEST_SRC_DIR)/*.cpp)
 
-# Object Files
-OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRC_FILES))
-TEST_OBJ_FILES = $(patsubst $(TEST_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(TEST_FILES))
+MAIN_SRC_FILES = # Add any main program files to exclude here if needed
+SRC_OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(filter-out $(MAIN_SRC_FILES),$(SRC_FILES)))
+TEST_OBJ_FILES = $(patsubst $(TEST_SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(TEST_FILES))
 
-# Executables
-TEST_EXEC = $(BIN_DIR)/run_tests
+TEST_TARGETS = $(BIN_DIR)/testcsvbs \
+               $(BIN_DIR)/testosm \
+               $(BIN_DIR)/testdpr \
+               $(BIN_DIR)/testcsvbsi \
+               $(BIN_DIR)/testtp \
+               $(BIN_DIR)/testcl
 
-# Create Directories if not exist
-$(shell mkdir -p $(BUILD_DIR) $(BIN_DIR))
+all: directories $(TEST_TARGETS) runtests
 
-# Compile Object Files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(INCLUDE_FILES)
-	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+directories:
+	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(OBJ_DIR)
 
-$(BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp $(INCLUDE_FILES)
-	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Link Executable for Tests
-$(TEST_EXEC): $(OBJ_FILES) $(TEST_OBJ_FILES)
-	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
+$(OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Run Tests
-test: $(TEST_EXEC)
-	./$(TEST_EXEC)
+$(BIN_DIR)/testcsvbs: $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/CSVBusSystemTest.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringUtils.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
 
-# Clean Build Files
+$(BIN_DIR)/testosm: $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/OSMTest.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/StringDataSource.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+$(BIN_DIR)/testdpr: $(OBJ_DIR)/DijkstraPathRouter.o $(OBJ_DIR)/DijkstraPathRouterTest.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+$(BIN_DIR)/testcsvbsi: $(OBJ_DIR)/BusSystemIndexer.o $(OBJ_DIR)/CSVBusSystemIndexerTest.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringUtils.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+$(BIN_DIR)/testtp: $(OBJ_DIR)/DijkstraTransportationPlanner.o $(OBJ_DIR)/CSVOSMTransportationPlannerTest.o $(OBJ_DIR)/DijkstraPathRouter.o $(OBJ_DIR)/BusSystemIndexer.o $(OBJ_DIR)/CSVBusSystem.o $(OBJ_DIR)/OpenStreetMap.o $(OBJ_DIR)/XMLReader.o $(OBJ_DIR)/DSVReader.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringUtils.o $(OBJ_DIR)/GeographicUtils.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+$(BIN_DIR)/testcl: $(OBJ_DIR)/TransportationPlannerCommandLine.o $(OBJ_DIR)/TPCommandLineTest.o $(OBJ_DIR)/StringDataSource.o $(OBJ_DIR)/StringDataSink.o
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+runtests: $(TEST_TARGETS)
+	@for exe in $(TEST_TARGETS); do \
+		echo "Running $$exe..."; \
+		./$$exe; \
+		if [ $$? -ne 0 ]; then \
+			echo "Test $$exe failed!"; \
+			exit 1; \
+		fi; \
+	done
+
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(BIN_DIR) $(OBJ_DIR)
+
+.PHONY: all directories runtests clean
