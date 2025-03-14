@@ -1,56 +1,45 @@
 #include "DSVWriter.h"
-#include <iostream>
-
-
+#include <vector>
+#include <sstream>
 
 struct CDSVWriter::SImplementation {
-    std::shared_ptr<CDataSink> Sink; 
-    char Delimiter; 
-    bool QuoteAll; 
+    std::shared_ptr<CDataSink> DSink;
+    char DDelimiter;
+    bool DQuoteAll;
 
-   
-    SImplementation(std::shared_ptr<CDataSink> sink, char delimiter, bool quoteall): Sink(sink), Delimiter(delimiter), QuoteAll(quoteall) {}
-
+    SImplementation(std::shared_ptr<CDataSink> sink, char delimiter, bool quoteall)
+        : DSink(sink), DDelimiter(delimiter), DQuoteAll(quoteall) {}
 
     bool WriteRow(const std::vector<std::string>& row) {
-       
-        if (!Sink) return false; 
-      
-        if (row.empty()) {
-            return Sink->Put('\n');
-        }
- 
-        for (size_t i = 0; i < row.size(); ++i) {
-            bool quote = QuoteAll || row[i].find(Delimiter) != std::string::npos ||
-                              row[i].find('"') != std::string::npos || row[i].find('\n') != std::string::npos;
-            
-            if (quote) {
-                
-                if (!Sink->Put('"')) return false; 
-      
-                for (char c : row[i]) {
-                    if (c == '"') {
-                        if (!Sink->Put('"') || !Sink->Put('"')) return false;
+        std::ostringstream line;
+        bool first = true;
+
+        for (const auto& field : row) {
+            if (!first) {
+                line << DDelimiter;
+            }
+            first = false;
+
+            bool needQuotes = DQuoteAll || (field.find(DDelimiter) != std::string::npos || field.find('"') != std::string::npos);
+            if (needQuotes) {
+                line << '"';
+                for (char ch : field) {
+                    if (ch == '"') {
+                        line << "\"\""; // Escape double quotes
                     } else {
-                     
-                        if (!Sink->Put(c)) return false;
+                        line << ch;
                     }
                 }
-   
-                if (!Sink->Put('"')) return false; 
-        
+                line << '"';
             } else {
-                for (char c : row[i]) {
-                    if (!Sink->Put(c)) return false;
-                }
-            }
-          
-            if (i < row.size() - 1) {
-                if (!Sink->Put(Delimiter)) return false; 
+                line << field;
             }
         }
-     
-        return Sink->Put('\n'); 
+
+        std::string output = line.str() + "\n";
+        std::vector<char> data(output.begin(), output.end());
+
+        return DSink->Write(data);
     }
 };
 
@@ -58,7 +47,6 @@ CDSVWriter::CDSVWriter(std::shared_ptr<CDataSink> sink, char delimiter, bool quo
     : DImplementation(std::make_unique<SImplementation>(sink, delimiter, quoteall)) {}
 
 CDSVWriter::~CDSVWriter() = default;
-
 
 bool CDSVWriter::WriteRow(const std::vector<std::string>& row) {
     return DImplementation->WriteRow(row);
